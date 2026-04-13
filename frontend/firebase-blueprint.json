@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and session management",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "interests": { "type": "array", "items": { "type": "string" } },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "session": {
+          "type": "object",
+          "properties": {
+            "lastSessionStart": { "type": "string", "format": "date-time" },
+            "cooldownEnd": { "type": "string", "format": "date-time" },
+            "isActive": { "type": "boolean" }
+          }
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "Idea": {
+      "title": "Idea",
+      "description": "A startup idea submission",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "title": { "type": "string" },
+        "problem": { "type": "string" },
+        "targetAudience": { "type": "string" },
+        "solution": { "type": "string" },
+        "category": { "type": "string" },
+        "qualityScore": { "type": "number" },
+        "aiFeedback": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "problem", "solution"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Structured feedback for an idea",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ideaId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "problemClarity": { "type": "number" },
+        "marketRelevance": { "type": "number" },
+        "suggestions": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ideaId", "userId", "rating"]
+    },
+    "Poll": {
+      "title": "Poll",
+      "description": "Validation poll for an idea",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ideaId": { "type": "string" },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "votes": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ideaId", "question", "options"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "Team matching application",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ideaId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "role": { "type": "string" },
+        "commitment": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ideaId", "userId", "role"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/ideas/{ideaId}": { "schema": "Idea", "description": "Startup ideas" },
+    "/ideas/{ideaId}/feedback/{feedbackId}": { "schema": "Feedback", "description": "Feedback for ideas" },
+    "/ideas/{ideaId}/polls/{pollId}": { "schema": "Poll", "description": "Polls for ideas" },
+    "/ideas/{ideaId}/applications/{appId}": { "schema": "Application", "description": "Team applications" }
+  }
+}

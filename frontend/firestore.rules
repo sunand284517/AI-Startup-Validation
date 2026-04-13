@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, displayName, email, photoURL, interests, skills, session
+    //
+    // Collection: ideas
+    // Fields: id, userId, userName, userPhoto, title, problem, targetAudience, solution, category, qualityScore, aiFeedback, status, createdAt
+    //
+    // Collection: ideas/{ideaId}/feedback
+    // Fields: id, ideaId, userId, userName, rating, problemClarity, marketRelevance, suggestions, createdAt
+    //
+    // Collection: ideas/{ideaId}/polls
+    // Fields: id, ideaId, question, options, votes, createdAt
+    //
+    // Collection: ideas/{ideaId}/applications
+    // Fields: id, ideaId, userId, userName, role, commitment, message, status, createdAt
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidString(val, min, max) {
+      return val is string && val.size() >= min && val.size() <= max;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email);
+    }
+
+    function isValidIdea(data) {
+      return data.keys().hasAll(['userId', 'title', 'problem', 'solution', 'status']) &&
+             data.userId == request.auth.uid &&
+             isValidString(data.title, 3, 100) &&
+             isValidString(data.problem, 10, 2000) &&
+             isValidString(data.solution, 10, 2000) &&
+             data.status in ['draft', 'published', 'archived'];
+    }
+
+    function isValidFeedback(data) {
+      return data.keys().hasAll(['ideaId', 'userId', 'rating']) &&
+             data.userId == request.auth.uid &&
+             data.rating >= 1 && data.rating <= 5;
+    }
+
+    function isValidApplication(data) {
+      return data.keys().hasAll(['ideaId', 'userId', 'role']) &&
+             data.userId == request.auth.uid &&
+             data.status == 'pending';
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) && isValidUser(request.resource.data);
+    }
+
+    match /ideas/{ideaId} {
+      allow read: if resource.data.status == 'published' || isDocOwner();
+      allow create: if isAuthenticated() && isValidIdea(request.resource.data);
+      allow update: if isDocOwner() && isValidIdea(request.resource.data);
+      allow delete: if isDocOwner();
+
+      match /feedback/{feedbackId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && isValidFeedback(request.resource.data);
+        allow update, delete: if isOwner(resource.data.userId);
+      }
+
+      match /polls/{pollId} {
+        allow read: if true;
+        allow create: if isDocOwner();
+        allow update: if isAuthenticated(); // Voting
+      }
+
+      match /applications/{appId} {
+        allow read: if isAuthenticated() && (request.auth.uid == resource.data.userId || request.auth.uid == get(/databases/$(database)/documents/ideas/$(ideaId)).data.userId);
+        allow create: if isAuthenticated() && isValidApplication(request.resource.data);
+        allow update: if isAuthenticated() && (request.auth.uid == get(/databases/$(database)/documents/ideas/$(ideaId)).data.userId);
+      }
+    }
+  }
+}
